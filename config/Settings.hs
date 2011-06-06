@@ -72,9 +72,9 @@ staticroot = approot `mappend` "/static"
 -- specific.
 connStr :: Text
 #ifdef PRODUCTION
-connStr = "user=Recipe password=Recipe host=localhost port=5432 dbname=Recipe_production"
+connStr = "user=recipes password=recipes host=localhost port=5432 dbname=recipes_production"
 #else
-connStr = "user=Recipe password=Recipe host=localhost port=5432 dbname=Recipe_debug"
+connStr = "user=recipes password=recipes host=localhost port=5432 dbname=recipes_debug"
 #endif
 
 -- | Your application will keep a connection pool and take connections from
