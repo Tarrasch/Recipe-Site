@@ -5,5 +5,17 @@ client_session_key.aes
 devel-server
 dist
 static/tmp
+*~
+*.bak
+*.swp
+*.o
+*.aux
+*.log
+*.out
+report/.nfs000000*
+.DS_Store
+*#*#
+*.class
+.goutput*
 
 
