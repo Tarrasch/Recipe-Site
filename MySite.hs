@@ -34,6 +34,7 @@ import qualified Data.Text.Lazy
 import qualified Data.Text.Lazy.Encoding
 import Text.Jasmine (minifym)
 import qualified Data.Text as T
+import Kerberos
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -136,6 +137,7 @@ instance YesodAuth MySite where
 
     authPlugins = [ authOpenId
                   , authEmail
+                  , authKerberos
                   ]
 
 instance YesodAuthEmail MySite where
