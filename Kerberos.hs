@@ -12,17 +12,92 @@ import qualified Settings
 import qualified Data.ByteString.Lazy as L
 import Settings (hamletFile, cassiusFile, juliusFile, widgetFile)
 import qualified Data.Text as T
+import Control.Applicative ((<*), (<$>), (<*>))
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import System.Process (rawSystem)
+import System.Exit (ExitCode(ExitSuccess))
+import Data.Monoid (mappend)
 
 forwardUrl :: AuthRoute
 forwardUrl = PluginR "kerberos" ["forward"]
 
 authKerberos :: YesodAuth m => AuthPlugin m
 authKerberos =
-    AuthPlugin "kerberos" dispatch login
+    AuthPlugin "kerberos" dispatch apLogin
   where
-    login :: (Yesod.Handler.Route Auth -> Yesod.Handler.Route m)
+    url = PluginR "kerberos" []
+    login :: AuthRoute
+    login = PluginR "kerberos" ["login"]
+    apLogin :: (Yesod.Handler.Route Auth -> Yesod.Handler.Route m)
                          -> Yesod.Widget.GWidget s m ()
-    login = undefined
-    dispatch = undefined
+    apLogin tm = [hamlet|
+    <div id="header">
+        <h1>Login
 
+    <div id="login">
+        <form method="post" action="@{tm login}">
+            <table>
+                <tr>
+                    <th>Username:
+                    <td>
+                        <input id="x" name="username" autofocus="" required>
+                <tr>
+                    <th>Password:
+                    <td>
+                        <input type="password" name="password" required>
+                <tr>
+                    <td>&nbsp;
+                    <td>
+                        <input type="submit" value="Login">
+
+            <script>
+                if (!("autofocus" in document.createElement("input"))) {
+                    document.getElementById("x").focus();
+                }              
+|]
+
+    dispatch "POST" ["login"] = postLoginR >>= sendResponse
+    dispatch _ _              = notFound
+    
+
+-- | Handle the login form
+postLoginR :: (YesodAuth y)
+           => GHandler Auth y ()
+postLoginR = do
+    (mu,mp) <- runFormPost' $ (,)
+        <$> maybeStringInput "username"
+        <*> maybeStringInput "password"
+
+    isValid <- case (mu,mp) of
+        (Nothing, _      ) -> return False
+        (_      , Nothing) -> return False
+        (Just u , Just p ) -> validateUser (u,p)
+
+    if isValid
+        then do
+            let cid = fromMaybe "" mu
+            let creds = Creds 
+                  { credsIdent  = cid
+                  , credsPlugin = "Kerberos"
+                  , credsExtra  = []
+                  }                                 
+            setCreds True creds
+        else do
+            setMessage [hamlet| Invalid username/password |]
+            toMaster <- getRouteToMaster
+            redirect RedirectTemporary $ toMaster LoginR
+
+-- | Given a (user,password) in plaintext, accept any
+validateUser :: (Text, Text) -> GHandler sub y Bool
+validateUser (cid,password) = 
+    fmap (== ExitSuccess) $ liftIO io
+  where
+    io :: IO ExitCode
+    io   = (rawSystem cmd args <* rawSystem "kdestroy" []) 
+    cmd  = T.unpack $ "echo " ++ password ++ " | kinit " 
+    args = [T.unpack $ cidnet]
+    (++) = mappend
+    cidnet = cid ++ "/net"
+    
 
