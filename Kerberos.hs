@@ -13,11 +13,14 @@ import qualified Data.ByteString.Lazy as L
 import Settings (hamletFile, cassiusFile, juliusFile, widgetFile)
 import qualified Data.Text as T
 import Control.Applicative ((<*), (<$>), (<*>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust)
 import Data.Text (Text)
 import System.Process (rawSystem)
 import System.Exit (ExitCode(ExitSuccess))
 import Data.Monoid (mappend)
+
+data ValidationResult = Ok 
+                      | Error Text
 
 forwardUrl :: AuthRoute
 forwardUrl = PluginR "kerberos" ["forward"]
@@ -69,35 +72,35 @@ postLoginR = do
         <$> maybeStringInput "username"
         <*> maybeStringInput "password"
 
-    isValid <- case (mu,mp) of
-        (Nothing, _      ) -> return False
-        (_      , Nothing) -> return False
+    validation <- case (mu,mp) of
+        (Nothing, _      ) -> return $ Error "Please fill in the username"
+        (_      , Nothing) -> return $ Error "Please fill in the password"
         (Just u , Just p ) -> validateUser (u,p)
 
-    if isValid
-        then do
-            let cid = fromMaybe "" mu
+    case validation of
+        Ok -> do
+            let cid = fromJust mu -- this cant fail
             let creds = Creds 
                   { credsIdent  = cid
                   , credsPlugin = "Kerberos"
                   , credsExtra  = []
                   }                                 
             setCreds True creds
-        else do
-            setMessage [hamlet| Invalid username/password |]
+        (Error message) -> do
+            setMessage [hamlet| Error: #{message} |]
             toMaster <- getRouteToMaster
             redirect RedirectTemporary $ toMaster LoginR
 
 -- | Given a (user,password) in plaintext, accept any
-validateUser :: (Text, Text) -> GHandler sub y Bool
-validateUser (cid,password) = 
+validateUser :: (Text, Text) -> GHandler sub y ValidationResult
+validateUser (cid,password) = undefined  {-$
     fmap (== ExitSuccess) $ liftIO io
   where
     io :: IO ExitCode
-    io   = (rawSystem cmd args <* rawSystem "kdestroy" []) 
+    io   = rawSystem cmd args 
     cmd  = T.unpack $ "echo " ++ password ++ " | kinit " 
     args = [T.unpack $ cidnet]
     (++) = mappend
     cidnet = cid ++ "/net"
-    
-
+    -- rawSystem "kdestroy" []    
+-}
