@@ -15,7 +15,7 @@ import qualified Data.Text as T
 import Control.Applicative ((<*), (<$>), (<*>))
 import Data.Maybe (fromJust)
 import Data.Text (Text)
-import System.Process (rawSystem)
+import System.Process
 import System.Exit (ExitCode(ExitSuccess))
 import Data.Monoid (mappend)
 
@@ -91,9 +91,25 @@ postLoginR = do
             toMaster <- getRouteToMaster
             redirect RedirectTemporary $ toMaster LoginR
 
+-- Make safe to pass as shell argument
+-- I'm really unsure if this is failproof!!!!!!!
+escape :: Text -> Text
+escape = T.filter (/= '\'')  
+
 -- | Given a (user,password) in plaintext, accept any
 validateUser :: (Text, Text) -> GHandler sub y ValidationResult
-validateUser (cid,password) = undefined  {-$
+validateUser (cid,password) = do
+    let cid_safe = escape cid   
+    liftIO $ putStrLn $ T.unpack cid_safe
+    (exitCode, out, err) <- liftIO $ readProcessWithExitCode 
+        "kinit" [T.unpack cid_safe] (T.unpack password)
+    case exitCode of
+      ExitSuccess   -> return Ok
+      _             -> return . Error $ T.pack err
+   
+
+
+{-
     fmap (== ExitSuccess) $ liftIO io
   where
     io :: IO ExitCode
