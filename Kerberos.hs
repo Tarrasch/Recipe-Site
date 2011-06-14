@@ -8,38 +8,31 @@ import Yesod
 import Yesod.Helpers.Auth
 import Yesod.Handler
 import Yesod.Widget
-import qualified Settings
-import qualified Data.ByteString.Lazy as L
-import Settings (hamletFile, cassiusFile, juliusFile, widgetFile)
 import qualified Data.Text as T
-import Control.Applicative ((<*), (<$>), (<*>))
+import Control.Applicative ((<$>), (<*>))
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import System.Process
 import System.Exit (ExitCode(ExitSuccess))
-import Data.Monoid (mappend)
 
 data ValidationResult = Ok 
                       | Error Text
 
-forwardUrl :: AuthRoute
-forwardUrl = PluginR "kerberos" ["forward"]
 
 authKerberos :: YesodAuth m => AuthPlugin m
 authKerberos =
-    AuthPlugin "kerberos" dispatch apLogin
+    AuthPlugin "kerberos" dispatch login
   where
-    url = PluginR "kerberos" []
-    login :: AuthRoute
-    login = PluginR "kerberos" ["login"]
-    apLogin :: (Yesod.Handler.Route Auth -> Yesod.Handler.Route m)
+    loginRoute :: AuthRoute
+    loginRoute = PluginR "kerberos" ["login"]
+    login :: (Yesod.Handler.Route Auth -> Yesod.Handler.Route m)
                          -> Yesod.Widget.GWidget s m ()
-    apLogin tm = [hamlet|
+    login tm = [hamlet|
     <div id="header">
         <h1>Login
 
     <div id="login">
-        <form method="post" action="@{tm login}">
+        <form method="post" action="@{tm loginRoute}">
             <table>
                 <tr>
                     <th>Username:
