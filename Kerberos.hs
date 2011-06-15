@@ -14,6 +14,7 @@ import Data.Maybe (fromJust)
 import Data.Text (Text)
 import System.Process
 import System.Exit (ExitCode(ExitSuccess))
+import Data.Monoid (mappend)
 
 data ValidationResult = Ok 
                       | Error Text
@@ -68,7 +69,7 @@ postLoginR = do
     validation <- case (mu,mp) of
         (Nothing, _      ) -> return $ Error "Please fill in the username"
         (_      , Nothing) -> return $ Error "Please fill in the password"
-        (Just u , Just p ) -> validateUser (u,p)
+        (Just u , Just p ) -> validateUser (u `mappend` "/net" ,p)
 
     case validation of
         Ok -> do
